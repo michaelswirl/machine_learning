@@ -1,10 +1,20 @@
 import numpy as np
 
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, max_iters=1000):
+    def __init__(self, learning_rate=0.01, max_iters=1000, decay=0.09, penalty=None, batch_size=64, alpha=0.1,method='batch', threshold = 0.5, optimize_threshold = None):
+        """
+        There are 3 methods of gradient descent available for the method parameter including batch, sgd and mini-batch. 
+        The regularization paramater can be set to l1 or l2.
+        The learning rate is set to get smaller as the gradient gets closer to 0 at a rate which can be set using the decay paramater.
+        """
         self.learning_rate = learning_rate
         self.max_iters = max_iters
-        self.threshold = 0.5
+        self.batch_size = batch_size
+        self.alpha = alpha 
+        self.decay = decay
+        self.penalty = penalty
+        self.method = method
+        self.threshold = threshold
 
     def sigmoid(self, z):
         return 1 / (1 + np.exp(-z))
@@ -21,42 +31,43 @@ class LogisticRegression:
         return gradient
     
 
-    def fit(self, X, y, method = 'batch', optimize_threshold = None, decay = 0.1):
-        """
-        There are 3 methods of gradient decent available for the method parameter including batch, sgd and mini-batch. 
-        The regularization paramater can be set to l1 or l2.
-        The learning rate is set to get smaller as the gradient gets closer to 0 at a rate which can be set using the decay paramater.
-        You can choose to optimize the threshold for the ROC or Precision-Recall Curve using the optimize_threshold which defaults to 1.
-        """
+    def fit(self, X, y):
+
         if len(X) != len(y):
             raise ValueError('X and y must be the same length')
-        self.weights = np.zeros(shape=X.shape[1] + 1)
-
-        if method == 'batch':
-            # add the intercept
-            X = np.hstack((np.ones((X.shape[0], 1)), X))
-            for i in range(self.max_iters):
-                y_pred = self.predict(X)
-                
-
-                # adjust weights 
-                self.weights = self.weights - self.learning_rate * gradient
-                # adjust learning rate
-                self.learning_rate -= self.learning_rate * decay
-
-        elif method == 'sgd':
-            pass
-
-        elif method == 'mini-batch':
-            pass
-
-        else:
-            raise ValueError('Method must be either batch, sgd, or mini-batch')
         
-        if optimize_threshold == None:
-            self.optimize_threshold(optimize_threshold)
-        else:
-            pass
+        # add intercept
+        X = np.hstack((np.ones((X.shape[0], 1)), X))
+        self.weights = np.zeros(X.shape[1])
+
+        for i in range(self.max_iters):
+            if self.method == 'sgd':
+                index = np.random.randint(0, X.shape[0])
+                X_i = X[index:index+1]
+                y_i = y[index:index+1]
+            elif self.method == 'mini-batch':
+                indices = np.random.choice(X.shape[0], size=self.batch_size, replace=False)
+                X_i = X[indices]
+                y_i = y[indices]
+            else: 
+                X_i = X
+                y_i = y
+
+            y_pred = self.predict(X_i)
+            gradient = self.compute_gradient(X_i, y_i, y_pred)
+            self.weights -= self.learning_rate * gradient
+
+            if self.penalty == 'l1':
+                gradient[1:] += self.alpha * np.sign(self.weights[1:])
+            elif self.penalty == 'l2':
+                gradient[1:] += 2 * self.alpha * self.weights[1:]
+            
+        
+        # if self.optimize_threshold == None:
+        #     pass
+        # else:
+        #     self.optimize_threshold(X_i, y_i)
+
 
     def predict_proba(self, X):
         # add intercept term if needed
@@ -67,7 +78,7 @@ class LogisticRegression:
         probabilities = self.sigmoid(z)
         return probabilities
 
-    def predict(self, X, optimize_threshold = None):
+    def predict(self, X):
         probabilities = self.predict_proba(X)
         predictions = (probabilities >= self.threshold).astype(int)
         return predictions
@@ -75,3 +86,5 @@ class LogisticRegression:
 
     def optimize_threshold(self, X, y):
         pass
+        # for i in np.arange(0.05, 0.95, .05):
+
