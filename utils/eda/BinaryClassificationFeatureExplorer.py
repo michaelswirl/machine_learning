@@ -99,7 +99,7 @@ class FeatureExplorer:
 
         fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 6))
         sns.histplot(data=self.display_data, x='transformed', hue=self.target, element="step", ax=axes[0])
-        sns.violinplot(x=self.target, y='transformed', data=self.display_data, ax=axes[1])
+        sns.violinplot(x=self.target, y='transformed', data=self.display_data, ax=axes[1], hue=self.target)
         plt.tight_layout()
         plt.show()
         self.display_correlation_scorecard('transformed')
